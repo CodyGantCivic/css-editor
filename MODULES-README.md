@@ -6,23 +6,26 @@ This document explains the modularized structure of the CivicPlus CSS Editor cod
 
 ```
 css-editor/
-├── css-editor.js                 # Original monolithic file (2057 lines)
+├── css-editor.js                  # Original monolithic file (2057 lines)
 ├── modules/
-│   ├── site-detection.js         # CivicPlus site detection
-│   ├── css-styles.js             # CSS injection for editor UI
-│   ├── syntax-highlighter.js     # CSS syntax highlighting
-│   ├── line-numbers.js           # Line number generation
-│   ├── validation.js             # Main CSS validation module
+│   ├── site-detection.js          # CivicPlus site detection
+│   ├── css-styles.js              # CSS injection for editor UI
+│   ├── syntax-highlighter.js      # CSS syntax highlighting
+│   ├── line-numbers.js            # Line number generation
+│   ├── validation-complete.js     # ⭐ FULL validation (1473 lines) - USE THIS
+│   ├── validation.js              # Stub file (only basic checks)
 │   ├── validation/
-│   │   └── typos.js              # Typo dictionaries
-│   ├── skin-replacement.js       # .skinX class replacement
-│   ├── editor-initialization.js  # Editor setup and lifecycle
-│   ├── text-limits.js            # Character limit enforcement
-│   ├── textarea-finder.js        # Textarea discovery
-│   ├── mutation-observer.js      # DOM change observer
-│   └── main.js                   # Main initialization orchestrator
-├── color-preview-test.html       # Color preview test suite
-└── COLOR-TEST-README.md          # Test suite documentation
+│   │   ├── syntax.js              # Basic syntax validation (partial)
+│   │   └── typos.js               # Typo dictionaries (complete)
+│   ├── skin-replacement.js        # .skinX class replacement
+│   ├── editor-initialization.js   # Editor setup and lifecycle
+│   ├── text-limits.js             # Character limit enforcement
+│   ├── textarea-finder.js         # Textarea discovery
+│   ├── mutation-observer.js       # DOM change observer
+│   └── main.js                    # Main initialization orchestrator
+├── color-preview-test.html        # Color preview test suite
+├── COLOR-TEST-README.md           # Test suite documentation
+└── MODULES-README.md              # This file
 ```
 
 ## 📋 Module Breakdown
@@ -116,8 +119,16 @@ updateLineNumbers(textarea, lineNumbersDiv, backdrop);
 
 ---
 
-### 5. **validation.js** (Lines 340-1791)
-**Purpose:** Main CSS validation module (⚠️ VERY LARGE - 1450+ lines)
+### 5. **validation-complete.js** (Lines 340-1791)
+**Purpose:** Complete CSS validation module with ALL 100+ validation checks (1473 lines)
+
+**⚠️ STATUS:** This is the **FULL, WORKING** validation module extracted from the original css-editor.js
+
+**Files:**
+- `validation-complete.js` - Complete validation logic (USE THIS ONE)
+- `validation.js` - Stub file (only has basic validation)
+- `validation/syntax.js` - Modular syntax validation (partial implementation)
+- `validation/typos.js` - Typo dictionaries (complete)
 
 **Functions:**
 - `validateCSS(code)` - Returns validation results
@@ -132,7 +143,7 @@ updateLineNumbers(textarea, lineNumbersDiv, backdrop);
 }
 ```
 
-**Validation Categories:**
+**Validation Categories (100+ checks):**
 1. **Syntax Errors:** Brackets, comments, strings, semicolons
 2. **Property Typos:** 35+ common typos (e.g., `bordr` → `border`)
 3. **Value Validation:** Type checking for each property
@@ -141,10 +152,17 @@ updateLineNumbers(textarea, lineNumbersDiv, backdrop);
 6. **Function Validation:** calc(), url(), var()
 7. **Advanced CSS:** Grid, Flexbox, transforms, gradients
 8. **At-Rules:** @media, @keyframes, @import, @font-face
+9. **Important Validation:** !important typos
+10. **Vendor Prefixes:** Outdated and needed prefixes
+11. **Shorthand Properties:** border, margin, padding, background
+12. **CSS Variables:** Custom property validation
+13. **Gradients:** linear-gradient, radial-gradient
+14. **Animations & Transitions:** Timing functions, durations
+15. **And 85+ more validation rules!**
 
-**⚠️ Refactoring Opportunity:**
-This module should be split into:
-- `validation/syntax.js` - Basic syntax checks
+**🔧 Future Modularization:**
+This module CAN be split into smaller modules:
+- `validation/syntax.js` - Basic syntax checks (STARTED)
 - `validation/properties.js` - Property validation
 - `validation/colors.js` - Color validation
 - `validation/functions.js` - CSS functions
@@ -152,13 +170,16 @@ This module should be split into:
 - `validation/at-rules.js` - @media, @keyframes, etc.
 
 **Dependencies:**
-- `validation/typos.js` - Typo dictionaries
+- None (self-contained with typo dictionaries included)
 
 **Usage:**
 ```javascript
 const result = validateCSS('.class { color: #fff; }');
 if (!result.isValid) {
     console.error('Errors:', result.errors);
+}
+if (result.hasWarnings) {
+    console.warn('Warnings:', result.warnings);
 }
 ```
 

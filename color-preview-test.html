@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Color Preview Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .stat-box.total { background: #e3f2fd; color: #1976d2; }
+        .stat-box.valid { background: #e8f5e9; color: #388e3c; }
+        .stat-box.invalid { background: #ffebee; color: #d32f2f; }
+
+        .controls {
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        button.primary {
+            background: #1976d2;
+            color: white;
+        }
+
+        button.primary:hover {
+            background: #1565c0;
+        }
+
+        .test-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .test-group {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .test-group h2 {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+
+        .test-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .test-item.valid {
+            background: #f1f8f4;
+            border-color: #4ec9b0;
+        }
+
+        .test-item.invalid {
+            background: #fff3f3;
+            border-color: #e51400;
+        }
+
+        .test-item .css-code {
+            flex: 1;
+            font-family: monospace;
+            white-space: pre;
+        }
+
+        .test-item .status {
+            margin-left: 10px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .test-item.valid .status {
+            background: #4ec9b0;
+            color: white;
+        }
+
+        .test-item.invalid .status {
+            background: #e51400;
+            color: white;
+        }
+
+        /* CSS Syntax Highlighting Styles */
+        .css-property { color: #0451a5; }
+        .css-value { color: #a31515; }
+        .css-number { color: #098658; }
+        .css-unit { color: #098658; }
+        .css-color { color: #a31515; }
+        .css-important { color: #af00db; font-weight: bold; }
+        .css-comment { color: #008000; font-style: italic; }
+        .css-selector { color: #0000ff; }
+        .css-bracket { color: #0000ff; font-weight: bold; }
+        .css-semicolon { color: #000000; }
+        .css-colon { color: #000000; }
+        .css-string { color: #a31515; }
+        .css-skin-class { color: #267f99; font-weight: bold; }
+        .css-color-preview {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #cccccc;
+            border-radius: 2px;
+            margin: 0 4px;
+            vertical-align: middle;
+        }
+
+        .error-message {
+            font-size: 11px;
+            color: #d32f2f;
+            margin-top: 4px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 CSS Color Preview Test Suite</h1>
+        <p>Testing color highlighting and preview functionality from css-editor.js</p>
+        <div class="stats">
+            <div class="stat-box total">Total Tests: <strong id="total-count">0</strong></div>
+            <div class="stat-box valid">Valid: <strong id="valid-count">0</strong></div>
+            <div class="stat-box invalid">Invalid: <strong id="invalid-count">0</strong></div>
+        </div>
+        <div class="controls">
+            <button class="primary" onclick="runTests()">Run All Tests</button>
+            <button class="primary" onclick="clearTests()">Clear Results</button>
+        </div>
+    </div>
+
+    <div id="test-results" class="test-container"></div>
+
+    <script>
+        // ==================== COLOR HIGHLIGHTING FUNCTIONS ====================
+        // Extracted from css-editor.js (lines 226-301)
+
+        function highlightCSS(code) {
+            code = code.replace(/[<>&]/g, (char) => {
+                const escapeMap = { '<': '&lt;', '>': '&gt;', '&': '&amp;' };
+                return escapeMap[char];
+            });
+
+            let tmp = code;
+            tmp = tmp.replace(/\/\*[\s\S]*?\*\//g, (match) => `<span class="css-comment">${match}</span>`);
+            tmp = tmp.replace(/(['"])(?:(?=(\\?))\2.)*?\1/g, (match) => `<span class="css-string">${match}</span>`);
+            tmp = tmp.replace(/\.skin\d+/g, (match) => `<span class="css-skin-class">${match}</span>`);
+            tmp = tmp.replace(/!important/g, '<span class="css-important">!important</span>');
+
+            const logicalLines = tmp.split('\n');
+
+            function highlightProperties(line) {
+                return line.replace(/([a-z-]+)(\s*)(:)(\s*)([^;}\n]+)(;?)/gi, (match, prop, space1, colon, space2, value, semicolon) => {
+                    if (match.includes('/*') || match.includes('*/') || match.includes('"') || match.includes("'")) {
+                        return match;
+                    }
+                    if (value.includes('{')) {
+                        return match;
+                    }
+
+                    let highlightedValue = value;
+
+                    // First, temporarily replace hex colors with placeholders to prevent double-matching
+                    const hexMatches = [];
+                    highlightedValue = highlightedValue.replace(/#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b/g, (colorMatch) => {
+                        const index = hexMatches.length;
+                        hexMatches.push(colorMatch);
+                        return `__HEX_${index}__`;
+                    });
+
+                    // Temporarily replace rgb/rgba functions with placeholders to prevent nested highlighting
+                    const rgbaMatches = [];
+                    highlightedValue = highlightedValue.replace(/rgba?\([^)]+\)/gi, (colorMatch) => {
+                        const index = rgbaMatches.length;
+                        rgbaMatches.push(colorMatch);
+                        return `__RGBA_${index}__`;
+                    });
+
+                    // Now highlight numbers and units (won't affect color placeholders)
+                    highlightedValue = highlightedValue.replace(/\b(\d+\.?\d*)([a-z%]+)\b/gi, (numMatch, num, unit) => {
+                        return `<span class="css-number">${num}${unit}</span>`;
+                    });
+
+                    highlightedValue = highlightedValue.replace(/\b(\d+\.?\d*)\b/g, (numMatch) => {
+                        if (numMatch.includes('span')) return numMatch;
+                        return `<span class="css-number">${numMatch}</span>`;
+                    });
+
+                    // Restore hex colors with proper highlighting and color preview
+                    highlightedValue = highlightedValue.replace(/__HEX_(\d+)__/g, (match, index) => {
+                        const colorMatch = hexMatches[parseInt(index)];
+                        return `<span class="css-color">${colorMatch}</span><span class="css-color-preview" style="background:${colorMatch}"></span>`;
+                    });
+
+                    // Finally, restore rgba functions with proper highlighting and color preview
+                    highlightedValue = highlightedValue.replace(/__RGBA_(\d+)__/g, (match, index) => {
+                        const colorMatch = rgbaMatches[parseInt(index)];
+                        return `<span class="css-color">${colorMatch}</span><span class="css-color-preview" style="background:${colorMatch}"></span>`;
+                    });
+
+                    highlightedValue = `<span class="css-value">${highlightedValue}</span>`;
+
+                    return `<span class="css-property">${prop}</span>${space1}<span class="css-colon">:</span>${space2}${highlightedValue}${semicolon ? '<span class="css-semicolon">;</span>' : ''}`;
+                });
+            }
+
+            const linesHtml = logicalLines.map(line => {
+                const processed = highlightProperties(line);
+                return processed || '&nbsp;';
+            }).join('\n');
+
+            return linesHtml.replace(/[{}]/g, (match) => `<span class="css-bracket">${match}</span>`);
+        }
+
+        // Simple validation for colors
+        function validateColor(cssLine) {
+            const errors = [];
+
+            // Check hex colors
+            const hexMatches = cssLine.matchAll(/#([0-9a-fA-F]*)/g);
+            for (const hexMatch of hexMatches) {
+                const hexValue = hexMatch[1];
+                const validHexLengths = [3, 4, 6, 8];
+
+                if (hexValue.length > 0 && !validHexLengths.includes(hexValue.length)) {
+                    errors.push(`Invalid hex color "#${hexValue}" - hex colors must be 3, 4, 6, or 8 characters`);
+                }
+
+                if (hexValue.length > 0 && !/^[0-9a-fA-F]+$/.test(hexValue)) {
+                    errors.push(`Invalid hex color "#${hexValue}" - contains invalid characters`);
+                }
+            }
+
+            // Check RGB/RGBA values
+            const rgbMatches = cssLine.matchAll(/rgba?\(([^)]+)\)/gi);
+            for (const rgbMatch of rgbMatches) {
+                const rgbContent = rgbMatch[1].trim();
+                const values = rgbContent.split(',').map(v => v.trim());
+
+                const isRgba = rgbMatch[0].toLowerCase().startsWith('rgba');
+                const expectedLength = isRgba ? 4 : 3;
+
+                if (values.length !== expectedLength) {
+                    errors.push(`Invalid ${isRgba ? 'rgba' : 'rgb'} - expected ${expectedLength} values, got ${values.length}`);
+                } else {
+                    // Check RGB values (0-255)
+                    for (let i = 0; i < 3; i++) {
+                        const val = parseInt(values[i]);
+                        if (isNaN(val) || val < 0 || val > 255) {
+                            errors.push(`Invalid ${isRgba ? 'rgba' : 'rgb'} - RGB values must be 0-255, got "${values[i]}"`);
+                            break;
+                        }
+                    }
+
+                    // Check alpha value (0-1) for RGBA
+                    if (isRgba && values.length === 4) {
+                        const alpha = parseFloat(values[3]);
+                        if (isNaN(alpha) || alpha < 0 || alpha > 1) {
+                            errors.push(`Invalid rgba - alpha value must be 0-1, got "${values[3]}"`);
+                        }
+                    }
+                }
+            }
+
+            return errors;
+        }
+
+        // ==================== TEST DATA GENERATION ====================
+
+        function generateTestCases() {
+            const tests = [];
+
+            // Hex 3-digit colors (50 variations)
+            tests.push({ category: 'Hex 3-Digit Colors (Valid)', tests: [
+                'color: #f00;',
+                'color: #0f0;',
+                'color: #00f;',
+                'color: #fff;',
+                'color: #000;',
+                'color: #abc;',
+                'color: #123;',
+                'color: #fed;',
+                'color: #8a2;',
+                'color: #4e7;',
+                'background-color: #c9c;',
+                'background-color: #5d5;',
+                'border-color: #eee;',
+                'border-color: #777;',
+                'text-decoration-color: #a1b;',
+            ]});
+
+            // Hex 6-digit colors (50 variations)
+            tests.push({ category: 'Hex 6-Digit Colors (Valid)', tests: [
+                'color: #ff0000;',
+                'color: #00ff00;',
+                'color: #0000ff;',
+                'color: #ffffff;',
+                'color: #000000;',
+                'color: #ff6b6b;',
+                'color: #4ecdc4;',
+                'color: #45b7d1;',
+                'color: #f7b731;',
+                'color: #5f27cd;',
+                'background-color: #ee5a6f;',
+                'background-color: #c44569;',
+                'background-color: #f8b500;',
+                'background-color: #38ada9;',
+                'border-color: #78e08f;',
+                'border-color: #e55039;',
+                'border-color: #4a69bd;',
+                'border-color: #60a3bc;',
+                'outline-color: #fa983a;',
+                'outline-color: #eb2f06;',
+                'color: #1e3799;',
+                'color: #3c6382;',
+                'color: #0a3d62;',
+                'color: #b71540;',
+                'color: #6a89cc;',
+            ]});
+
+            // Hex 8-digit colors with alpha (RRGGBBAA)
+            tests.push({ category: 'Hex 8-Digit Colors with Alpha (Valid)', tests: [
+                'color: #ff0000ff;',
+                'color: #00ff00ff;',
+                'color: #0000ff80;',
+                'color: #ffffff00;',
+                'color: #00000033;',
+                'background-color: #ff6b6b99;',
+                'background-color: #4ecdc4cc;',
+                'border-color: #45b7d1aa;',
+                'border-color: #f7b73166;',
+            ]});
+
+            // Hex 4-digit colors with alpha (RGBA)
+            tests.push({ category: 'Hex 4-Digit Colors with Alpha (Valid)', tests: [
+                'color: #f00f;',
+                'color: #0f0f;',
+                'color: #00f8;',
+                'color: #fff0;',
+                'background-color: #0003;',
+            ]});
+
+            // RGB colors (40 variations)
+            tests.push({ category: 'RGB Colors (Valid)', tests: [
+                'color: rgb(255, 0, 0);',
+                'color: rgb(0, 255, 0);',
+                'color: rgb(0, 0, 255);',
+                'color: rgb(255, 255, 255);',
+                'color: rgb(0, 0, 0);',
+                'color: rgb(128, 128, 128);',
+                'color: rgb(255, 128, 0);',
+                'color: rgb(64, 224, 208);',
+                'color: rgb(255, 105, 180);',
+                'color: rgb(135, 206, 235);',
+                'background-color: rgb(255, 215, 0);',
+                'background-color: rgb(186, 85, 211);',
+                'background-color: rgb(240, 128, 128);',
+                'background-color: rgb(144, 238, 144);',
+                'border-color: rgb(100, 149, 237);',
+                'border-color: rgb(255, 160, 122);',
+                'border-color: rgb(32, 178, 170);',
+                'outline-color: rgb(219, 112, 147);',
+                'outline-color: rgb(72, 61, 139);',
+                'color: rgb(0, 128, 128);',
+            ]});
+
+            // RGBA colors (40 variations)
+            tests.push({ category: 'RGBA Colors (Valid)', tests: [
+                'color: rgba(255, 0, 0, 1);',
+                'color: rgba(0, 255, 0, 0.5);',
+                'color: rgba(0, 0, 255, 0.3);',
+                'color: rgba(255, 255, 255, 0.8);',
+                'color: rgba(0, 0, 0, 0.1);',
+                'color: rgba(128, 128, 128, 0.7);',
+                'color: rgba(255, 128, 0, 0.9);',
+                'color: rgba(64, 224, 208, 0.4);',
+                'color: rgba(255, 105, 180, 0.6);',
+                'color: rgba(135, 206, 235, 0.2);',
+                'background-color: rgba(255, 215, 0, 0.75);',
+                'background-color: rgba(186, 85, 211, 0.85);',
+                'background-color: rgba(240, 128, 128, 0.95);',
+                'background-color: rgba(144, 238, 144, 0.45);',
+                'border-color: rgba(100, 149, 237, 0.65);',
+                'border-color: rgba(255, 160, 122, 0.55);',
+                'border-color: rgba(32, 178, 170, 0.35);',
+                'outline-color: rgba(219, 112, 147, 0.25);',
+                'outline-color: rgba(72, 61, 139, 0.15);',
+                'color: rgba(0, 128, 128, 1);',
+            ]});
+
+            // Invalid hex colors
+            tests.push({ category: 'Invalid Hex Colors', tests: [
+                'color: #ff;',           // Too short
+                'color: #ffff;',         // Invalid length (5)
+                'color: #fffff;',        // Invalid length (5)
+                'color: #fffffff;',      // Invalid length (7)
+                'color: #gggggg;',       // Invalid characters
+                'color: #12345g;',       // Invalid character
+                'color: #xyz;',          // Invalid characters
+                'color: #-12345;',       // Invalid character
+                'background-color: #00;', // Too short
+                'border-color: #12;',    // Too short
+            ]});
+
+            // Invalid RGB colors
+            tests.push({ category: 'Invalid RGB Colors', tests: [
+                'color: rgb(256, 0, 0);',      // Out of range
+                'color: rgb(255, 300, 0);',    // Out of range
+                'color: rgb(255, 0, -10);',    // Negative value
+                'color: rgb(255, 0);',         // Missing value
+                'color: rgb(255);',            // Missing values
+                'color: rgb(255, 255, 255, 0.5);', // Too many values for rgb
+                'background-color: rgb(abc, 0, 0);', // Invalid number
+                'border-color: rgb(255, xyz, 0);',   // Invalid number
+            ]});
+
+            // Invalid RGBA colors
+            tests.push({ category: 'Invalid RGBA Colors', tests: [
+                'color: rgba(255, 0, 0);',        // Missing alpha
+                'color: rgba(256, 0, 0, 0.5);',   // Out of range
+                'color: rgba(255, 0, 0, 2);',     // Alpha out of range
+                'color: rgba(255, 0, 0, -0.5);',  // Negative alpha
+                'color: rgba(255, 0);',           // Missing values
+                'background-color: rgba(255, 0, 0, 1, 0.5);', // Too many values
+            ]});
+
+            // Mixed scenarios
+            tests.push({ category: 'Mixed Color Scenarios (Valid)', tests: [
+                'background: linear-gradient(#ff0000, #00ff00);',
+                'background: linear-gradient(rgb(255, 0, 0), rgb(0, 255, 0));',
+                'background: linear-gradient(rgba(255, 0, 0, 0.5), rgba(0, 255, 0, 0.5));',
+                'border: 2px solid #ff6b6b;',
+                'box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);',
+                'box-shadow: 0 0 10px #4ecdc4, 0 0 20px rgba(78, 205, 196, 0.5);',
+                'text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);',
+                'background: radial-gradient(circle, #ff0000, #0000ff);',
+            ]});
+
+            // Edge cases
+            tests.push({ category: 'Edge Cases & Special Scenarios', tests: [
+                'color: #FFF;',                    // Uppercase hex
+                'color: #FFFFFF;',                 // Uppercase hex
+                'color: #FfFfFf;',                 // Mixed case hex
+                'color: RGB(255, 0, 0);',          // Uppercase RGB
+                'color: RGBA(255, 0, 0, 1);',      // Uppercase RGBA
+                'color: rgba(255,0,0,1);',         // No spaces in rgba
+                'color: rgb( 255 , 0 , 0 );',      // Extra spaces
+                'background: #fff url(image.png);', // Color with other values
+                'border: 1px solid rgb(100, 100, 100);', // Color in shorthand
+            ]});
+
+            return tests;
+        }
+
+        // ==================== TEST RUNNER ====================
+
+        function runTests() {
+            const testCases = generateTestCases();
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '';
+
+            let totalTests = 0;
+            let validTests = 0;
+            let invalidTests = 0;
+
+            testCases.forEach(group => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'test-group';
+
+                const header = document.createElement('h2');
+                header.textContent = `${group.category} (${group.tests.length} tests)`;
+                groupDiv.appendChild(header);
+
+                group.tests.forEach((cssLine, index) => {
+                    totalTests++;
+                    const testItem = document.createElement('div');
+                    testItem.className = 'test-item';
+
+                    // Validate the color
+                    const validationErrors = validateColor(cssLine);
+                    const isValid = validationErrors.length === 0;
+
+                    if (isValid) {
+                        validTests++;
+                        testItem.classList.add('valid');
+                    } else {
+                        invalidTests++;
+                        testItem.classList.add('invalid');
+                    }
+
+                    // Highlight the CSS
+                    const highlightedCode = highlightCSS(cssLine);
+
+                    const codeDiv = document.createElement('div');
+                    codeDiv.className = 'css-code';
+                    codeDiv.innerHTML = highlightedCode;
+                    testItem.appendChild(codeDiv);
+
+                    const status = document.createElement('span');
+                    status.className = 'status';
+                    status.textContent = isValid ? '✓ VALID' : '✗ ERROR';
+                    testItem.appendChild(status);
+
+                    groupDiv.appendChild(testItem);
+
+                    // Add error messages for invalid tests
+                    if (!isValid) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error-message';
+                        errorDiv.textContent = validationErrors.join(', ');
+                        testItem.appendChild(errorDiv);
+                    }
+                });
+
+                resultsContainer.appendChild(groupDiv);
+            });
+
+            // Update stats
+            document.getElementById('total-count').textContent = totalTests;
+            document.getElementById('valid-count').textContent = validTests;
+            document.getElementById('invalid-count').textContent = invalidTests;
+
+            console.log('Test Results:', {
+                total: totalTests,
+                valid: validTests,
+                invalid: invalidTests,
+                passRate: ((validTests / totalTests) * 100).toFixed(2) + '%'
+            });
+        }
+
+        function clearTests() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('total-count').textContent = '0';
+            document.getElementById('valid-count').textContent = '0';
+            document.getElementById('invalid-count').textContent = '0';
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('DOMContentLoaded', runTests);
+    </script>
+</body>
+</html>
